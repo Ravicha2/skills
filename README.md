@@ -10,7 +10,9 @@ Design and plan evals for RAG / knowledge agents: gold sets, eval plans, and opt
 npx skills add Ravicha2/skills@rag-eval
 ```
 
-## agent-eval
+## agent-eval (work in progress)
+
+> ⚠️ Not tested yet — early draft, expect changes. Feedback on the design direction is welcome.
 
 Design and plan evaluations for agent pipelines that combine skills, MCP servers, and CLI tools. Produces an eval set file (tasks with trigger expectations, expected behavior, negative controls) and an eval pipeline plan with measurement points, metric table, baseline/arm matrix, and thresholds. Optional NVIDIA skillevaluator executor.
 
