@@ -29,7 +29,7 @@ Variants worth including: paraphrase the same task two ways (one terse, one chat
 
 ### 2. Implicit case (unprompted trigger)
 
-The task describes the need without naming the skill or tool. Tests whether the agent discovers and loads the right capability on its own — the failure here is silent non-use, an agent flailing with generic tools where the purpose-built path existed.
+The task describes the need without naming the skill or tool. Tests whether the agent discovers and loads the right capability on its own, the failure here is silent non-use, an agent flailing with generic tools where the purpose-built path existed.
 
 ```yaml
 - id: a010
@@ -129,6 +129,14 @@ The task requires several dependent steps, possibly with a deliberate mid-task o
 Start at 20 to 40 cases: roughly 50% task, 15% implicit, 10% contextual, 15% negative, 5% security, 5% multi-step. If the domain makes a different mix sensible (a security-sensitive surface wants more negative and security cases; a discovery-focused skill wants more implicit), adjust and note why in a comment on the distribution.
 
 Live-run sets can sit at the low end (20 to 30); sandbox sets where runs are cheap can go higher. Never trade the negative and security categories for more task cases; those two are the categories that catch failures task cases cannot.
+
+## The set is versioned, and it grows
+
+The eval set is the most valuable artifact this skill produces, and it is never finished. Every real failure the agent ships, and every miss an eval run catches, becomes a candidate case in one of the categories above; that loop is what makes the set measurably more representative of reality over time. When a failure becomes a case, name the incident in a comment on the case, so the set reads as a history of what actually broke, not an opinion about what might.
+
+Bump `version` in the header on any change to the set. Arms and ablations pin the version they ran against (references/ablation.md rule 2: the set is the control; a set change between arms is a ruler change, and its deltas are noise).
+
+Hold out a slice: 10 to 20 percent of cases the team does not tune prompts or component choices against. Arm-round winners are confirmed on the held-out slice or on fresh cases (references/ablation.md rule 9) before they become decisions. Without it, endless tuning against the set optimizes the test instead of the agent.
 
 ## Review checklist (for the engineer)
 

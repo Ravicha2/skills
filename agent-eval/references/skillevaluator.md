@@ -15,21 +15,21 @@ NVIDIA [SkillEvaluator](https://github.com/NVIDIA/SkillEvaluator) (`skillevaluat
 
 ## What the plan must translate
 
-skillevaluator's dataset schema (`evals/evals.json`) differs from this skill's `eval_set.yaml`. When delegating an arm to skillevaluator, the plan adds a translation row per case: `question` ← `task`, `expected_output`/`ground_truth` ← `expected_output`, `expected_behavior` ← `expected_behavior`, `should_trigger` ← `trigger: must` / `must-not`. Cases with no skillevaluator equivalent (security-only traps, cases needing the user's MCP surface) stay in the user's harness arm; the plan lists which cases went which way and why — this is an arm-definition entry in the ablation.md sense.
+skillevaluator's dataset schema (`evals/evals.json`) differs from this skill's `eval_set.yaml`. When delegating an arm to skillevaluator, the plan adds a translation row per case: `question` ← `task`, `expected_output`/`ground_truth` ← `expected_output`, `expected_behavior` ← `expected_behavior`, `should_trigger` ← `trigger: must` / `must-not`. Cases with no skillevaluator equivalent (security-only traps, cases needing the user's MCP surface) stay in the user's harness arm; the plan lists which cases went which way and why, this is an arm-definition entry in the ablation.md sense.
 
 ## CLI surface the plan may reference
 
-- `skillevaluator create-eval-dataset <skill-dir> --full` — 4-bucket synthetic dataset; useful as a smoke test, not as the eval set (generic cases, not the user's real surface).
-- `skillevaluator tier3 evaluate <skill-dir>` — live sandboxed runs with trajectories, 6 raw metrics (security, skill_execution, skill_efficiency, accuracy, goal_accuracy, behavior_check) mapped to 5 dimensions (Security, Correctness, Discoverability, Effectiveness, Efficiency), with-skill/baseline lift.
-- `skillevaluator compare` — results across agents.
-- `skillevaluator view` / `harbor-view` — HTML report, trajectory browser.
-- `skillevaluator validate <skill-dir> --harbor-contract` — run before delegating; fixes missing eval files and schema mismatches cheaply.
+- `skillevaluator create-eval-dataset <skill-dir> --full`, 4-bucket synthetic dataset; useful as a smoke test, not as the eval set (generic cases, not the user's real surface).
+- `skillevaluator tier3 evaluate <skill-dir>`, live sandboxed runs with trajectories, 6 raw metrics (security, skill_execution, skill_efficiency, accuracy, goal_accuracy, behavior_check) mapped to 5 dimensions (Security, Correctness, Discoverability, Effectiveness, Efficiency), with-skill/baseline lift.
+- `skillevaluator compare`, results across agents.
+- `skillevaluator view` / `harbor-view`, HTML report, trajectory browser.
+- `skillevaluator validate <skill-dir> --harbor-contract`, run before delegating; fixes missing eval files and schema mismatches cheaply.
 
-The 5-criterion accuracy rubric (tool identified, actions correct, factually accurate, task addressed, actionable) is the source of task-eval.md's adapted rubric; when skillevaluator runs the arm, its rubric result can stand in for the plan's answer-correctness row — the plan notes the substitution and keeps the provenance requirement: skillevaluator's judge sees the sandbox trace, which satisfies provenance-eval.md invariant 1 for that arm.
+The 5-criterion accuracy rubric (tool identified, actions correct, factually accurate, task addressed, actionable) is the source of task-eval.md's adapted rubric; when skillevaluator runs the arm, its rubric result can stand in for the plan's answer-correctness row, the plan notes the substitution and keeps the provenance requirement: skillevaluator's judge sees the sandbox trace, which satisfies provenance-eval.md invariant 1 for that arm.
 
 ## Health and readiness
 
-Before promising a delegated arm, the plan includes a readiness step: `skillevaluator health-check` (CLI + backend) and `skillevaluator doctor` (runtime). Full tier 3 needs a provider key and a sandbox backend (Docker, local OS, or cloud). If the user lacks these, the arm falls back to the user's harness and the plan says so in the arm table — a delegated arm that cannot run is a plan error, not an implementation surprise.
+Before promising a delegated arm, the plan includes a readiness step: `skillevaluator health-check` (CLI + backend) and `skillevaluator doctor` (runtime). Full tier 3 needs a provider key and a sandbox backend (Docker, local OS, or cloud). If the user lacks these, the arm falls back to the user's harness and the plan says so in the arm table, a delegated arm that cannot run is a plan error, not an implementation surprise.
 
 ## What not to delegate
 

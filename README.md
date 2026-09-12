@@ -12,9 +12,9 @@ npx skills add Ravicha2/skills@rag-eval
 
 ## agent-eval (work in progress)
 
-> ⚠️ Not tested yet — early draft, expect changes. Feedback on the design direction is welcome.
+> ⚠️ Not tested yet, early draft, expect changes. Feedback on the design direction is welcome.
 
-Design and plan evaluations for agent pipelines that combine skills, MCP servers, and CLI tools. Produces an eval set file (tasks with trigger expectations, expected behavior, negative controls) and an eval pipeline plan with measurement points, metric table, baseline/arm matrix, and thresholds. Optional NVIDIA skillevaluator executor.
+Design and plan evaluations for agent pipelines that combine skills, MCP servers, and CLI tools. Produces an eval set file (tasks with trigger expectations, expected behavior, negative controls) and an eval pipeline plan with measurement points, metric table, baseline/arm matrix, and thresholds. Enforces result capture and provenance on every metric; judges follow deterministic-first rules with bias mitigations and validation against human labels; eval sets version and grow from real failures. Optional NVIDIA skillevaluator executor.
 
 ```bash
 npx skills add Ravicha2/skills@agent-eval
@@ -28,6 +28,6 @@ npx skills add Ravicha2/skills
 
 ## Feedback
 
-Issues and PRs welcome — open an issue on this repo describing your use case and what felt off.
+Issues and PRs welcome, open an issue on this repo describing your use case and what felt off.
 
 [![skills.sh](https://skills.sh/b/Ravicha2/skills)](https://skills.sh/Ravicha2/skills)

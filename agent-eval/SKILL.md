@@ -1,6 +1,6 @@
 ---
 name: agent-eval
-description: Design and plan evaluations for agent pipelines that combine skills, MCP servers, and CLI tools. Produces two concrete artifacts, an eval set file (tasks with trigger expectations, expected behavior, negative controls) and an eval pipeline plan with measurement points, metric table with provenance fields, baseline/arm matrix, and thresholds. Covers task completion, trajectory and behavior checks, security, plus token and time efficiency as first-class metrics. Uses NVIDIA skillevaluator as the optional executor for skill arms. Use this skill whenever the user wants to evaluate an agent, skill, tool, MCP server, CLI workflow, or agent pipeline, measure lift versus a baseline, check whether the right skill or tool fired, judge trajectories or security behavior, or asks "how do I know my agent/skill/tools are working", even if they never say the word "eval".
+description: Design and plan evaluations for agent pipelines that combine skills, MCP servers, and CLI tools. Produces two concrete artifacts, an eval set file (tasks with trigger expectations, expected behavior, negative controls) and an eval pipeline plan with measurement points, metric table with provenance fields, baseline/arm matrix, and thresholds. Covers task completion, trajectory and behavior checks, security, plus token and time efficiency as first-class metrics. Judges follow deterministic-first rules with bias mitigations and validation against human labels. Uses NVIDIA skillevaluator as the optional executor for skill arms. Use this skill whenever the user wants to evaluate an agent, skill, tool, MCP server, CLI workflow, or agent pipeline, measure lift versus a baseline, check whether the right skill or tool fired, judge trajectories or security behavior, validate an LLM judge, or asks "how do I know my agent/skill/tools are working", even if they never say the word "eval".
 ---
 
 # Agent Eval Design
@@ -14,7 +14,7 @@ This skill produces two files via two subagents. You orchestrate. The subagents 
 
 Dependency: the pipeline plan needs the eval set to exist, so the second subagent runs only after the first finishes and the user has reviewed the eval set.
 
-This skill plans only. It does not run pipelines or execute code. Implementation and execution happen later, outside this skill — except where the plan explicitly delegates an arm's execution to the skillevaluator CLI (see "Executor: skillevaluator").
+This skill plans only. It does not run pipelines or execute code. Implementation and execution happen later, outside this skill, except where the plan explicitly delegates an arm's execution to the skillevaluator CLI (see "Executor: skillevaluator").
 
 ## Why two subagents, not one session
 
@@ -28,6 +28,7 @@ Eval set quality depends on thinking through triggering, behavior, and negative 
 | `references/provenance-eval.md` | pipeline planner | always. Invariants on recording tool/stage results (not just calls) and attribution. |
 | `references/trajectory-eval.md` | pipeline planner | when the plan touches triggering, workflow order, or behavior checks. |
 | `references/task-eval.md` | pipeline planner | when the plan touches task completion or answer grading. |
+| `references/judge-eval.md` | pipeline planner | whenever any metric row is judge-graded. Deterministic-first rule, judge design steps, biases, validation protocol. |
 | `references/efficiency-eval.md` | pipeline planner | always. Token, time, and tool-call productivity as first-class metrics. |
 | `references/ablation.md` | pipeline planner | when the plan compares arms (skill on/off, MCP vs CLI, component variants). |
 | `references/skillevaluator.md` | pipeline planner | when delegating execution of an arm to the skillevaluator CLI. |
@@ -88,10 +89,11 @@ Use the Write tool to write the file. Do not return the YAML in your message, ju
 ### Orchestrator steps
 
 8. Confirm the architecture: how the agent runs (which harness, which model), where traces land, what the skillevaluator role is if any. Read configs yourself until you can brief the subagent on the real pipeline shape.
-9. Confirm the eval set path from Phase 1.
-10. Dispatch a subagent with the Agent tool (`subagent_type: general`). Use the brief in "Subagent brief" below.
-11. When the subagent returns, read `eval_plan.md` yourself. Show the user the structure: the measurement-points diagram, the metric table, the arm matrix, the thresholds, the build order. If they want changes, re-dispatch the same subagent with the specific fixes.
-12. End by telling the user, in one line: wrote `eval_set.yaml` and `eval_plan.md`; implementation and runs happen outside this skill (except any arm delegated to skillevaluator, which the plan names explicitly).
+9. Decide whether the plan needs an arm matrix beyond the minimum. The minimum viable arms are the same task set with and without the skill (lift). A full matrix per references/ablation.md is needed when the user is choosing between components (skill vs MCP tool vs CLI, model A vs B), attributing a regression to a component, or deciding whether a component earns its cost. It is scope creep for a first baseline or a health check. If the trigger is not obvious from what the user said, ask them one question and default to no. When the matrix applies, the planner brief names the decision and points at references/ablation.md; when it does not, the brief omits the ablation line entirely, because a planner told to consider arms will invent variants nobody asked for.
+10. Confirm the eval set path from Phase 1.
+11. Dispatch a subagent with the Agent tool (`subagent_type: general`). Use the brief in "Subagent brief" below.
+12. When the subagent returns, read `eval_plan.md` yourself. Show the user the structure: the measurement-points diagram, the metric table, the arm matrix (if present), the thresholds, the build order. If they want changes, re-dispatch the same subagent with the specific fixes.
+13. End by telling the user, in one line: wrote `eval_set.yaml` and `eval_plan.md`; implementation and runs happen outside this skill (except any arm delegated to skillevaluator, which the plan names explicitly).
 
 ### Subagent brief
 
@@ -103,18 +105,22 @@ Read these files in full first:
 - <skill-dir>/references/provenance-eval.md (always; its invariants apply to every metric)
 - <skill-dir>/references/trajectory-eval.md (when the plan touches triggering, workflow order, behavior checks)
 - <skill-dir>/references/task-eval.md (when the plan touches task completion grading)
+- <skill-dir>/references/judge-eval.md (whenever any metric row is judge-graded; its deterministic-first rule, design steps, and validation protocol govern every judge)
 - <skill-dir>/references/efficiency-eval.md (always; token and time metrics are first-class)
-- <skill-dir>/references/ablation.md (when the plan compares arms)
 - <skill-dir>/references/skillevaluator.md (when any arm's execution is delegated to skillevaluator)
 - the eval set at <path to eval_set.yaml>
 - the user's agent architecture: <path or description>
 
+<Only when the orchestrator decided in step 9 that the arm matrix applies, add this line; otherwise omit it entirely.>
+Ablation: this eval exists to decide <the user's actual decision, e.g. "whether the filesystem MCP server earns its latency versus plain CLI">. Also read <skill-dir>/references/ablation.md in full before writing, and add a section 6 "Arm matrix" to the plan following its format and rules. Sections 1 to 5 are unchanged: the metric table, thresholds, and capture rules apply to every arm identically.
+<End ablation block.>
+
 Write eval_plan.md to <path next to eval_set.yaml>. The plan must have these sections, in order:
 
 1. Measurement points. A mermaid flowchart of the user's actual agent loop (task in, triggering, tool calls, final answer) with measurement points M1, M2, ... marked where data is captured. Each capture includes the call AND the result identity set per references/provenance-eval.md invariant 1.
-2. Metric table. One row per metric with columns: measurement point, stage, metric name, how it is computed (formula, trace scan, or judge rubric, drawn from the stage reference for that stage), the eval set field it consumes, the provenance field it consumes, and whether it is a completion, trajectory, security, or efficiency metric. Every metric must trace to an eval set field and a provenance field (or be marked provenance-exempt with a reason, per provenance-eval.md invariant 2). Cost, token, and latency metrics are first-class rows, not an afterthought. Cut any metric with no data source.
-3. Arms and baselines. The runs the plan requires: baseline arm(s) and treatment arm(s). Minimum viable: same task set with and without the skill (lift). If the user is deciding between components (skill vs MCP tool vs CLI, reranker vs none), apply references/ablation.md: one variable per variant, noise margins, stop rule, cost column. State which arm(s) run via skillevaluator and which run in the user's harness.
-4. Thresholds and pass conditions. For every metric and threshold, state: the number; the reason it is that number (domain stakes, cost of a wrong answer, user requirement, or first-run calibration, never a number copied from a reference); whether the threshold is segmented per case category (a single system-wide pass target is usually wrong); how per-case pass criteria are applied (cases with a grading_note pass when their note is satisfied, not when an aggregate crosses a threshold); recalibration policy (what evidence updates thresholds after the first real run); regression behavior (fail the run, or flag for review). If a per-case criterion requires signals from a later measurement point than the arm captures, state that the arm cannot apply it.
+2. Metric table. One row per metric with columns: measurement point, stage, metric name, how it is computed, the eval set field it consumes, the provenance field it consumes, and whether it is a completion, trajectory, security, or efficiency metric. Computation is graded in this order (references/judge-eval.md deterministic-first rule): trace scan where the pass condition reduces to trace events, formula where it reduces to counts, judge rubric only where the condition is substantive, with one line on why no scan or formula suffices. Draw the scan, formula, or rubric from the stage reference for that stage. Every metric must trace to an eval set field and a provenance field (or be marked provenance-exempt with a reason, per provenance-eval.md invariant 2). Cost, token, and latency metrics are first-class rows, not an afterthought. Cut any metric with no data source.
+3. Arms and baselines. The runs the plan requires: baseline arm(s) and treatment arm(s). Minimum viable: same task set with and without the skill (lift). When the orchestrator decided the full arm matrix applies (step 9), apply references/ablation.md: one variable per variant, noise margins, stop rule, cost column, winner confirmation. State which arm(s) run via skillevaluator and which run in the user's harness.
+4. Thresholds and pass conditions. For every metric and threshold, state: the number; the reason it is that number (domain stakes, cost of a wrong answer, user requirement, or first-run calibration, never a number copied from a reference); whether the threshold is segmented per case category (a single system-wide pass target is usually wrong); how per-case pass criteria are applied (cases with a grading_note pass when their note is satisfied, not when an aggregate crosses a threshold); recalibration policy (what evidence updates thresholds after the first real run); regression behavior (fail the run, or flag for review). For every judge-graded metric, report the judge's validation agreement and sample size next to the threshold (references/judge-eval.md validation protocol), and state its noise margin in case counts. If a per-case criterion requires signals from a later measurement point than the arm captures, state that the arm cannot apply it.
 5. Build order. Which measurement point to instrument first, chosen by cheapest-to-wire plus highest-signal. Usually: trace capture with result identities first (provenance-eval.md invariant 1), then triggering checks, then task grading, then efficiency rollups.
 
 The references deliberately contain no threshold numbers. If you cannot derive a number from the user's domain stakes or requirements, write "TBD: needs user input" in that row and list what input is needed. Do not invent numbers.
